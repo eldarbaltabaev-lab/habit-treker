@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HF Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Playfair+Display:wght@600;700&display=swap&subset=cyrillic" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script defer src="script.js"></script>
+<script defer src="achievements.js"></script>
+<script defer src="bg.js"></script>
+<link rel="icon" href="favicon.png">
+</head>
+<body>
+<div class="auth-loading" id="bootLoader">Загрузка…</div>
+
+<div class="auth-screen" id="authScreen">
+  <div class="auth-bg"><div class="auth-orb orb-1"></div><div class="auth-orb orb-2"></div><div class="auth-orb orb-3"></div></div>
+  <div class="auth-card">
+    <div class="auth-logo">Habit Tracker</div>
+    <div class="auth-subtitle">Личный трекер привычек</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Вход</button>
+      <button class="auth-tab" data-tab="register">Регистрация</button>
+    </div>
+    <form class="auth-form" id="loginForm">
+      <label class="auth-field"><span class="auth-label">Логин</span><input type="text" name="login" class="auth-input" required minlength="3" autocomplete="username" placeholder="Ваш логин"></label>
+      <label class="auth-field"><span class="auth-label">Пароль</span><input type="password" name="password" class="auth-input" required minlength="6" autocomplete="current-password" placeholder="Ваш пароль"></label>
+      <div class="auth-error" id="loginError"></div>
+      <button type="submit" class="auth-submit">Войти</button>
+    </form>
+    <form class="auth-form hidden" id="registerForm" autocomplete="off">
+      <label class="auth-field"><span class="auth-label">Логин</span><input type="text" name="login" class="auth-input" required minlength="3" autocomplete="username" placeholder="Минимум 3 символа"></label>
+      <label class="auth-field"><span class="auth-label">Пароль</span><input type="password" name="password" class="auth-input" required minlength="6" autocomplete="new-password" placeholder="Минимум 6 символов"></label>
+      <label class="auth-field"><span class="auth-label">Повторите пароль</span><input type="password" name="password2" class="auth-input" required minlength="6" autocomplete="new-password" placeholder="Ещё раз"></label>
+      <div class="auth-error" id="registerError"></div>
+      <button type="submit" class="auth-submit">Создать аккаунт</button>
+    </form>
+  </div>
+</div>
+
+<div class="app-screen hidden" id="appScreen">
+  <div class="flip-scene" id="flipScene">
+
+    <div class="flip-face flip-habit" id="habitSide">
+      <div class="app">
+        <header class="header">
+          <div class="hdr-left"><h1 id="flipLogo" title="Переключить на Finance">Habit Tracker</h1>
+          <div class="drums-inline">
+            <div class="drum-group"><div class="drum-label">Месяц</div><div class="drum" id="monthDrum"><div class="drum-track"></div><div class="drum-glow"></div></div></div>
+            <div class="drum-group"><div class="drum-label">Год</div><div class="drum" id="yearDrum"><div class="drum-track"></div><div class="drum-glow"></div></div></div>
+          </div></div>
+          <div class="ctrl">
+            <button id="calendarBtn" class="btn-primary">Календарь</button>
+            <button id="todayBtn" class="btn-primary">Сегодня</button>
+                        <button id="statsBtn" class="btn-primary">Статистика</button>
+            <button type="button" class="btn-primary" data-achbtn>Достижения</button>
+            <button type="button" class="theme-orb" data-themebtn aria-label="Сменить тему"></button>
+            <button id="logoutBtn" class="btn-ghost">Выйти</button>
+          </div>
+        </header>
+
+        <section class="big-chart">
+          <div class="panel-title">Динамика активности по дням</div>
+          <div class="big-chart-wrap"><canvas id="lineChart"></canvas></div>
+        </section>
+
+        <aside class="left">
+          <div class="panel-title">Общий прогресс</div>
+          <div class="chart-wrap"><canvas id="pieChart"></canvas><div class="donut-center"><div class="donut-pct" id="sPct">0%</div><div class="donut-lbl">Прогресс</div></div></div>
+        </aside>
+
+        <main class="main review">
+          <div class="review-head">REVIEW</div>
+          <div class="week-nav" data-weeknav></div>
+          <div id="reviewCalendar"></div>
+          <div class="review-metrics">
+            <div class="metric violet"><div class="mv" id="sTasks">0</div><div class="ml">Total Tasks</div></div>
+            <div class="metric green"><div class="mv" id="rCompleted">0</div><div class="ml">Completed</div></div>
+            <div class="metric cyan"><div class="mv" id="rTarget">0</div><div class="ml">Target</div></div>
+            <div class="metric orange"><div class="mv" id="rLeft">0</div><div class="ml">Left</div></div>
+          </div>
+        </main>
+
+        <aside class="right">
+          <div class="panel-title">Top Daily Habits</div>
+          <div class="top-list" id="topList"></div>
+        </aside>
+
+        <div class="habits-row">
+          <div class="week-nav" data-weeknav></div>
+          <div class="habit-panel scroll-x">
+            <table class="dh habits-all"><thead id="habitThead"></thead><tbody id="habitTbody"></tbody></table>
+            <div class="empty-state hidden" id="emptyState">Добавьте первую привычку кнопкой «+ Привычка»</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-face flip-finance" id="financeSide">
+      <div class="app">
+        <header class="header">
+          <div class="hdr-left"><h1 id="flipLogoFin" title="Переключить на Habit">Finance Tracker</h1>
+          <div class="drums-inline">
+            <div class="drum-group"><div class="drum-label">Месяц</div><div class="drum" id="finMonthDrum"><div class="drum-track"></div><div class="drum-glow"></div></div></div>
+            <div class="drum-group"><div class="drum-label">Год</div><div class="drum" id="finYearDrum"><div class="drum-track"></div><div class="drum-glow"></div></div></div>
+          </div></div>
+          <div class="ctrl">
+            <button id="finTodayBtn" class="btn-primary">Сегодня</button>
+            <button id="finIncomeBtn" class="btn-primary">+ Доход</button>
+            <button id="finExpenseBtn" class="btn-primary">− Расход</button>
+            <button id="finBillBtn" class="btn-primary">+ Платёж</button>
+            <button type="button" class="btn-primary" data-achbtn>Достижения</button>
+            <button type="button" class="theme-orb" data-themebtn aria-label="Сменить тему"></button>
+            <button id="finSettingsBtn" class="btn-primary" title="Настройки и конвертер">Конвертер</button>
+            <button id="finLogoutBtn" class="btn-ghost">Выйти</button>
+          </div>
+        </header>
+
+        <section class="balance-panel">
+          <div>
+            <div class="panel-title">Баланс за период</div>
+            <div class="balance-big" id="finBalance">0 ₸</div>
+            <div class="balance-sub">
+              <span class="bal-in">+ <span id="finIncomeSum">0</span></span>
+              <span class="bal-out">− <span id="finExpenseSum">0</span></span>
+            </div>
+            <div class="panel-title cur-title">Валюта</div>
+            <div class="currency-row"></div>
+          </div>
+          <div class="soon-panel">
+            <div class="panel-title">Скоро оплатить</div>
+            <div class="soon-list" id="soonList"></div>
+          </div>
+        </section>
+
+        <section class="big-chart">
+          <div class="panel-title">Динамика трат по дням</div>
+          <div class="big-chart-wrap"><canvas id="finLineChart"></canvas></div>
+        </section>
+
+        <aside class="left">
+          <div class="panel-title">Расходы по категориям</div>
+          <div class="chart-wrap"><canvas id="finPieChart"></canvas></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-scroll">
+            <div class="dh-head"><span>ТРАНЗАКЦИИ</span><span id="finTxCount">0</span></div>
+            <div class="dh-scroll">
+              <table class="dh fin-table">
+                <thead><tr><th>Дата</th><th>Тип</th><th>Категория</th><th>Заметка</th><th>Сумма</th><th></th></tr></thead>
+                <tbody id="finTxBody"></tbody>
+              </table>
+              <div class="empty-state hidden" id="finTxEmpty">Пока нет транзакций. Добавьте «+ Доход» или «− Расход».</div>
+            </div>
+            <div class="dh-head gap"><span>ОБЯЗАТЕЛЬНЫЕ ПЛАТЕЖИ</span><span id="finBillCount">0</span></div>
+            <div class="dh-scroll">
+              <table class="dh fin-table">
+                <thead><tr><th>День</th><th>Название</th><th>Сумма</th><th>Оплачено в этом мес.</th><th></th></tr></thead>
+                <tbody id="finBillBody"></tbody>
+              </table>
+              <div class="empty-state hidden" id="finBillEmpty">Нет обязательных платежей</div>
+            </div>
+          </div>
+        </main>
+
+        <aside class="right">
+          <div class="panel-title">Категории</div>
+          <div class="fin-settings" id="finSettings">
+            <div class="auth-field"><span class="auth-label">Категории расходов</span>
+              <div class="cat-chips" id="catExpenseChips"></div>
+              <div class="add-cat"><input type="text" data-newcat="expense" maxlength="24" placeholder="Новая категория"><button data-addcat="expense">+</button></div>
+            </div>
+            <div class="auth-field"><span class="auth-label">Категории доходов</span>
+              <div class="cat-chips" id="catIncomeChips"></div>
+              <div class="add-cat"><input type="text" data-newcat="income" maxlength="24" placeholder="Новая категория"><button data-addcat="income">+</button></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stats-screen hidden" id="statsScreen">
+  <div class="stats-header">
+    <h2>Статистика</h2>
+    <div class="hdr-spacer"></div>
+    <button id="closeStats">Назад</button>
+  </div>
+  <div class="stats-grid-wrap">
+    <div class="stats-card full">
+      <h3>Год-хитмап <span class="sub" id="heatmapYear">—</span></h3>
+      <div class="heatmap-wrap"><div class="heatmap" id="heatmap"></div></div>
+      <div class="hm-legend"><span>меньше</span><i class="heatmap-cell" data-level="0"></i><i class="heatmap-cell" data-level="1"></i><i class="heatmap-cell" data-level="2"></i><i class="heatmap-cell" data-level="3"></i><i class="heatmap-cell" data-level="4"></i><span>больше</span></div>
+    </div>
+    <div class="stats-card full">
+      <h3>Сравнение месяцев</h3>
+      <div class="cmp-grid">
+        <div class="cmp-col"><div class="cmp-label" id="cmpPrevLabel">—</div><div class="cmp-big" id="cmpPrevPct">0%</div><div class="cmp-sub" id="cmpPrevSub">0 из 0 выполнено</div></div>
+        <div class="cmp-col"><div class="cmp-label" id="cmpCurLabel">—</div><div class="cmp-big" id="cmpCurPct">0%</div><div class="cmp-sub" id="cmpCurSub">0 из 0 выполнено</div></div>
+      </div>
+      <div class="cmp-chart-wrap"><canvas id="cmpChart"></canvas></div>
+      <div class="cmp-diff flat" id="cmpDiff">—</div>
+    </div>
+    <div class="stats-card"><h3>Топ-3 привычки за всё время</h3><div class="top3-list" id="top3List"></div></div>
+    <div class="stats-card"><h3>Слабые места</h3><div class="weak-list" id="weakList"></div></div>
+    <div class="stats-card full"><h3>Прогресс по топ-5 привычкам</h3><div class="cat-rings" id="catRings"></div></div>
+  </div>
+</div>
+
+<div class="calendar-screen hidden" id="calendarScreen">
+  <div class="calendar-header">
+    <h2>Годовой календарь</h2>
+    <div class="cal-nav">
+      <button id="calPrevYear">‹</button>
+      <div class="cal-title" id="calTitle">—</div>
+      <button id="calNextYear">›</button>
+    </div>
+    <div class="hdr-spacer"></div>
+    <button id="calAddEvent" class="btn-primary">+ Событие</button>
+    <button id="calToday">Текущий год</button>
+    <button id="closeCalendar">Назад</button>
+  </div>
+
+  <div class="calendar-legend" id="calLegend"></div>
+
+  <div class="upcoming-panel">
+    <div class="upcoming-head"><span>Ближайшие события — <span id="upcomingYear">—</span></span><span class="upcoming-count" id="upcomingCount">0</span></div>
+    <div class="upcoming-list" id="upcomingList"></div>
+  </div>
+
+  <div class="year-calendar" id="yearCalendar"></div>
+
+  <div class="calendar-day-panel hidden" id="calDayPanel">
+    <div class="cdp-head"><span id="cdpTitle">—</span><button id="cdpClose">✕</button></div>
+    <div class="cdp-body" id="cdpBody"></div>
+  </div>
+
+  <div class="event-modal hidden" id="eventModal">
+    <div class="em-card">
+      <div class="em-head"><span>Новое событие</span><button data-close>✕</button></div>
+      <form id="eventForm" class="em-form">
+        <label class="auth-field"><span class="auth-label">Название</span>
+          <input type="text" name="title" class="auth-input" required maxlength="60" placeholder="Например: День рождения мамы">
+        </label>
+        <div class="em-row">
+          <label class="auth-field"><span class="auth-label">День</span><input type="number" name="day" class="auth-input" required min="1" max="31" placeholder="15"></label>
+          <label class="auth-field"><span class="auth-label">Месяц</span><select name="month" class="auth-input" required id="emMonth"></select></label>
+        </div>
+        <label class="auth-field"><span class="auth-label">Тип</span><select name="type" class="auth-input" id="emType"></select></label>
+        <label class="repeat-toggle"><input type="checkbox" name="repeat" checked><span class="repeat-track"></span><span class="repeat-label">Повторять каждый год</span></label>
+        <label class="auth-field"><span class="auth-label">Заметка (необязательно)</span><input type="text" name="note" class="auth-input" maxlength="120" placeholder="Дополнительно..."></label>
+        <div class="auth-error" id="emError"></div>
+        <button type="submit" class="auth-submit">Добавить событие</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="event-modal hidden" id="finTxModal">
+  <div class="em-card">
+    <div class="em-head"><span id="finTxTitle">Новая транзакция</span><button data-close>✕</button></div>
+    <form id="finTxForm" class="em-form">
+      <input type="hidden" name="kind" id="finTxKind" value="expense">
+      <label class="auth-field"><span class="auth-label">Сумма</span><input type="number" name="amount" class="auth-input" required min="0" step="0.01" placeholder="0"></label>
+      <label class="auth-field"><span class="auth-label">Категория</span><select name="category" class="auth-input" id="finTxCat"></select></label>
+      <label class="auth-field"><span class="auth-label">Заметка</span><input type="text" name="note" class="auth-input" maxlength="80" placeholder="Например: продукты в Magnum"></label>
+      <div class="em-row">
+        <label class="auth-field"><span class="auth-label">День</span><input type="number" name="day" class="auth-input" required min="1" max="31" id="finTxDay"></label>
+        <label class="auth-field"><span class="auth-label">Месяц/год</span><input type="text" class="auth-input" id="finTxPeriod" disabled></label>
+      </div>
+      <div class="auth-error" id="finTxError"></div>
+      <button type="submit" class="auth-submit">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+<div class="event-modal hidden" id="finBillModal">
+  <div class="em-card">
+    <div class="em-head"><span>Новый платёж</span><button data-close>✕</button></div>
+    <form id="finBillForm" class="em-form">
+      <label class="auth-field"><span class="auth-label">Название</span><input type="text" name="title" class="auth-input" required maxlength="60" placeholder="Интернет"></label>
+      <label class="auth-field"><span class="auth-label">Сумма</span><input type="number" name="amount" class="auth-input" required min="0" step="0.01" placeholder="5000"></label>
+      <label class="auth-field"><span class="auth-label">День месяца</span><input type="number" name="day" class="auth-input" required min="1" max="31" placeholder="10"></label>
+      <div class="auth-error" id="finBillError"></div>
+      <button type="submit" class="auth-submit">Добавить платёж</button>
+    </form>
+  </div>
+</div>
+
+<div class="event-modal hidden" id="finSettingsModal">
+  <div class="em-card">
+    <div class="em-head"><span>Конвертер валют</span><button data-close>✕</button></div>
+    <div class="em-form">
+      <div class="conv-row">
+        <input type="number" id="convAmt" class="auth-input" value="1000" min="0" step="any">
+        <select id="convFrom" class="auth-input"></select>
+      </div>
+      <button type="button" id="convSwap" class="conv-swap" title="Поменять местами">Поменять валюты</button>
+      <div class="conv-row">
+        <input type="text" id="convOut" class="auth-input" readonly>
+        <select id="convTo" class="auth-input"></select>
+      </div>
+      <div class="prof-sub" id="convNote"></div>
+    </div>
+  </div>
+</div>
+
+<div class="event-modal hidden" id="confirmModal">
+  <div class="em-card">
+    <div class="em-head"><span>Подтверждение</span><button type="button" data-close>✕</button></div>
+    <div class="em-form">
+      <div class="confirm-text" id="confirmText"></div>
+      <div class="confirm-actions">
+        <button type="button" class="confirm-no" data-no>Отмена</button>
+        <button type="button" class="confirm-yes" id="confirmYes" data-yes>Удалить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stats-screen hidden" id="achScreen">
+  <div class="stats-header">
+    <h2>Достижения</h2>
+    <div class="hdr-spacer"></div>
+    <button id="closeAch" type="button">Назад</button>
+  </div>
+  <div class="ach-wrap">
+    <div class="stats-card ach-top">
+      <div class="ach-boss" id="achBoss"></div>
+      <div class="ach-prog"><div class="ach-count" id="achCount">0 / 40</div><div class="pbar"><div class="pfill" id="achBar"></div></div></div>
+    </div>
+    <div class="stats-card"><div class="ach-grid" id="achGrid"></div></div>
+  </div>
+  <div class="ach-tip" id="achTip"></div>
+</div>
+
+<div class="ach-pop hidden" id="achPop">
+  <canvas id="achFx"></canvas>
+  <div class="ach-box">
+    <div class="ach-kicker" id="achKicker">Новое достижение</div>
+    <div class="ach-aura"><div class="ach-frame"><img id="achImg" alt="" draggable="false"></div></div>
+    <div class="ach-cond" id="achCond"></div>
+    <div class="ach-name">
+      <div class="ach-name-label" id="achNameLabel">Хотите назвать котика?</div>
+      <input type="text" id="achNameInput" class="auth-input" maxlength="20" placeholder="Например: Барсик" autocomplete="off">
+      <div class="ach-btns"><button type="button" class="ach-save" id="achSave">Сохранить имя</button><button type="button" class="ach-skip" id="achSkip">Назвать позже</button></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
